@@ -1,0 +1,19 @@
+import 'dart:async';
+
+import 'package:flame/components.dart';
+import 'package:flame_tiled/flame_tiled.dart';
+import 'package:pixel_adventure/actors/player.dart';
+
+class Level extends World {
+  late TiledComponent level;
+  final double tileSize = 16;
+
+  @override
+  FutureOr<void> onLoad() async {
+    level = await TiledComponent.load('Level-01.tmx', Vector2.all(tileSize));
+
+    add(level);
+    add(Player(character: "Pink Man"));
+    return super.onLoad();
+  }
+}
