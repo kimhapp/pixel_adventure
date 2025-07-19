@@ -5,13 +5,14 @@
     },
     "activeFile": "Level-01.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
         "Level-01.tmx": {
             "scale": 1.577890625,
-            "selectedLayer": 0,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 319.73065306728716,
+                "x": 194.24667029756893,
                 "y": 183.78967173342573
             }
         },

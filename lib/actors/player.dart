@@ -6,7 +6,7 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 enum PlayerState { idle, run }
 
 class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure> {
-  Player({required this.character});
+  Player({position, required this.character}) : super(position: position);
   String character;
 
   late final SpriteAnimation idleAnimation;

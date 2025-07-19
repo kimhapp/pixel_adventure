@@ -9,7 +9,7 @@ class PixelAdventure extends FlameGame {
   final double height = 360;
 
   @override
-  final world = Level();
+  final world = Level(levelName: "Level-01");
 
   @override
   FutureOr<void> onLoad() async {
