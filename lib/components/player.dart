@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
 enum PlayerState { idle, run }
-enum PlayerDirection { left, right, none }
 
 class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler {
   Player({super.position, required this.character});
@@ -19,9 +18,10 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   final runConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 12, textureSize: 32);
 
   // Movement related fields
+  double horizontalMovement = 0;
   double moveSpeed = 100;
   Vector2 velocity = Vector2.zero();
-  PlayerDirection playerDirection = PlayerDirection.none;
+  double friction = 0.85;
 
   @override
   FutureOr<void> onLoad() {
@@ -31,23 +31,19 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   void update(double dt) {
+    _updatePlayerState();
     _updatePlayerMovement(dt);
     return super.update(dt);
   }
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
+    horizontalMovement = 0;
     bool isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA);
     bool isRightKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyD);
 
-    if ((isRightKeyPressed && isLeftKeyPressed) ||
-        (!isRightKeyPressed && !isLeftKeyPressed)) {
-      playerDirection = PlayerDirection.none;
-    } else if (isRightKeyPressed) {
-      playerDirection = PlayerDirection.right;
-    } else if (isLeftKeyPressed) {
-      playerDirection = PlayerDirection.left;
-    }
+    horizontalMovement += isLeftKeyPressed ? -1 : 0;
+    horizontalMovement += isRightKeyPressed ? 1 : 0;
 
     return super.onKeyEvent(event, keysPressed);
   }
@@ -70,32 +66,33 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     );
   }
 
-  void _updatePlayerMovement(double dt) {
-    double dirX = 0.0;
 
-    switch (playerDirection) {
-      case PlayerDirection.left:
-        dirX -= moveSpeed;
-        if (!isFlippedHorizontally) {
-          flipHorizontallyAroundCenter();
-        }
-        current = PlayerState.run;
-        break;
-      case PlayerDirection.right:
-        dirX += moveSpeed;
-        if (isFlippedHorizontally) {
-          flipHorizontallyAroundCenter();
-        }
-        current = PlayerState.run;
-        break;
-      case PlayerDirection.none:
-        dirX += velocity.x * 0.85; // For a friction landing
-        current = PlayerState.idle;
-        break;
+  void _updatePlayerState() {
+    if (horizontalMovement == 0) {
+      current = PlayerState.idle;
+    } else {
+      if (velocity.x < 0 && !isFlippedHorizontally) {
+        flipHorizontallyAroundCenter();
+      } else if (velocity.x > 0 && isFlippedHorizontally) {
+        flipHorizontallyAroundCenter();
+      }
+
+      current = PlayerState.run;
+    }
+  }
+
+  void _updatePlayerMovement(double dt) {
+    if (horizontalMovement != 0) {
+      velocity.x = horizontalMovement * moveSpeed;
+    } else {
+      velocity.x *= friction; // Friction movement when stopped
     }
 
-    velocity = Vector2(dirX, 0);
-    position += velocity * dt;
+    if (velocity.x.abs() < 1) {
+      velocity.x = 0;
+    }
+
+    position.x += velocity.x * dt;
   }
 }
 
