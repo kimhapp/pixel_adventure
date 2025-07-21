@@ -7,7 +7,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:pixel_adventure/components/player.dart';
 import 'package:pixel_adventure/components/level.dart';
 
-class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCallbacks {
+class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
   final double width = 640;
   final double height = 360;
   final Player player = Player(character: "Pink Man");

@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
+import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
 enum PlayerState { idle, run }
 
-class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler {
-  Player({super.position, required this.character});
+class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
+  Player({super.position, required this.character}) {debugMode = true; add(RectangleHitbox());}
   String character;
 
   // Animation related fields
@@ -22,6 +24,17 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   double moveSpeed = 100;
   Vector2 velocity = Vector2.zero();
   double friction = 0.85;
+  final double _gravity = 9.8;
+  final double _jumpForce = 450;
+  final double _terminalVelocity = 300;
+  bool canMoveRight = true;
+  bool canMoveLeft = true;
+  bool isGrounded = false;
+  bool hitHead = false;
+  bool hasJumped = false;
+
+  // List of collision from levels
+  List<CollisionBlock> collisionBlocks = [];
 
   @override
   FutureOr<void> onLoad() {
@@ -31,8 +44,11 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   void update(double dt) {
-    _updatePlayerState();
+    _flipPlayerSprite();
     _updatePlayerMovement(dt);
+    if (!isGrounded) {
+      _applyGravity(dt);
+    }
     return super.update(dt);
   }
 
@@ -41,11 +57,70 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     horizontalMovement = 0;
     bool isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA);
     bool isRightKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyD);
+    bool isJumpKeyPressed = keysPressed.contains(LogicalKeyboardKey.space);
 
-    horizontalMovement += isLeftKeyPressed ? -1 : 0;
-    horizontalMovement += isRightKeyPressed ? 1 : 0;
+    if (isLeftKeyPressed || isRightKeyPressed) {
+      current = PlayerState.run;
+
+      if (isRightKeyPressed && canMoveRight) {
+        horizontalMovement += 1;
+      }
+      if (isLeftKeyPressed && canMoveLeft) {
+        horizontalMovement += -1;
+      }
+    } else {
+      current = PlayerState.idle;
+      horizontalMovement = 0;
+    }
+
+    if (isJumpKeyPressed) {hasJumped = true;}
 
     return super.onKeyEvent(event, keysPressed);
+  }
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if (other is CollisionBlock) {
+      if (!other.isPlatform) {
+        if (velocity.x != 0) {
+          final double collisionPoint = other.x;
+          final double fixedX = isFlippedHorizontally ? position.x - width : position.x;
+          final bool isLeft = collisionPoint > fixedX;
+
+          if (isLeft) {
+            canMoveRight = false;
+          } else {
+            canMoveLeft = false;
+          }
+        }
+        else if (velocity.y != 0) {
+          final double collisionPoint = other.y;
+          final bool isAbove = collisionPoint > position.y;
+
+          if (isAbove) {
+            isGrounded = true;
+          } else {
+            hitHead = true;
+          }
+        }
+      }
+    }
+    return super.onCollisionStart(intersectionPoints, other);
+  }
+
+  @override
+  void onCollisionEnd(PositionComponent other) {
+    if (other is CollisionBlock) {
+      if (velocity.x != 0) {
+        canMoveLeft = true;
+        canMoveRight = true;
+      }
+      else if (velocity.y != 0) {
+        hitHead = false;
+        isGrounded = false;
+      }
+    }
+    return super.onCollisionEnd(other);
   }
 
   void _loadAllAnimations() {
@@ -57,8 +132,10 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
       PlayerState.idle: idleAnimation,
       PlayerState.run: runAnimation,
     };
+
+    current = PlayerState.idle;
   }
-  
+
   SpriteAnimation _spriteAnimation(String state, _PlayerAnimationConfig config) {
     return SpriteAnimation.fromFrameData(
         game.images.fromCache('Main Characters/$character/$state (32x32).png'),
@@ -66,33 +143,43 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     );
   }
 
-
-  void _updatePlayerState() {
-    if (horizontalMovement == 0) {
-      current = PlayerState.idle;
-    } else {
-      if (velocity.x < 0 && !isFlippedHorizontally) {
-        flipHorizontallyAroundCenter();
-      } else if (velocity.x > 0 && isFlippedHorizontally) {
-        flipHorizontallyAroundCenter();
-      }
-
-      current = PlayerState.run;
+  void _flipPlayerSprite() {
+    if (horizontalMovement < 0 && !isFlippedHorizontally) {
+      flipHorizontallyAroundCenter();
+    } else if (horizontalMovement > 0 && isFlippedHorizontally) {
+      flipHorizontallyAroundCenter();
     }
   }
 
   void _updatePlayerMovement(double dt) {
+    if (hasJumped) _playerJump(dt);
+
     if (horizontalMovement != 0) {
       velocity.x = horizontalMovement * moveSpeed;
     } else {
       velocity.x *= friction; // Friction movement when stopped
     }
 
-    if (velocity.x.abs() < 1) {
+    if ((velocity.x > 0 && !canMoveRight) || (velocity.x < 0 && !canMoveLeft) || velocity.x.abs() < 1) {
       velocity.x = 0;
     }
 
     position.x += velocity.x * dt;
+  }
+
+  void _applyGravity(double dt) {
+    if (hitHead) {
+      velocity.y = 0 ;
+    }
+    velocity.y += _gravity;
+    velocity.y = velocity.y.clamp(-_jumpForce, _terminalVelocity);
+    position.y += velocity.y * dt;
+  }
+
+  void _playerJump(double dt) {
+    velocity.y = -_jumpForce;
+    position.y += velocity.y * dt;
+    hasJumped = false;
   }
 }
 
