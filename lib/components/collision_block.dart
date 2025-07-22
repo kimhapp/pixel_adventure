@@ -7,4 +7,6 @@ class CollisionBlock extends PositionComponent  {
     add(RectangleHitbox());
   }
   bool isPlatform;
+  bool isCollidedHorizontally = false;
+  bool isCollidedVertically = false;
 }
