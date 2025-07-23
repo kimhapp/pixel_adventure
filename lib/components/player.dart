@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
@@ -9,8 +10,9 @@ import 'package:pixel_adventure/pixel_adventure.dart';
 enum PlayerState { idle, run, jump, fall }
 
 class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler {
-  Player({super.position, required this.character}) {debugMode = true;}
+  Player({super.position, required this.character});
   String character;
+  final hitbox = _PlayerHitbox(offsetX: 10, offsetY: 4, width: 14, height: 28);
 
   // Animation related fields
   late final SpriteAnimation idleAnimation;
@@ -29,7 +31,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   Vector2 velocity = Vector2.zero();
   double friction = 0.85;
   final double _gravity = 9.8;
-  final double _jumpForce = 300;
+  final double _jumpForce = 260;
   final double _terminalVelocity = 300;
   bool isGrounded = true;
   bool hitHead = false;
@@ -41,6 +43,11 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimations();
+    debugMode = true;
+    add(RectangleHitbox(
+      position: Vector2(hitbox.offsetX, hitbox.offsetY),
+      size: Vector2(hitbox.width, hitbox.height)
+    ));
     return super.onLoad();
   }
 
@@ -59,7 +66,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     horizontalMovement = 0;
     bool isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA);
     bool isRightKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyD);
-    bool isJumpKeyPressed = keysPressed.contains(LogicalKeyboardKey.space);
+    bool isJumpKeyPressed = keysPressed.contains(LogicalKeyboardKey.space) && !hasJumped; // Prevent another jump if space is pressed during in air
 
     if (isRightKeyPressed) {
         horizontalMovement += 1;
@@ -81,12 +88,12 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.x > 0) {
             velocity.x = 0;
-            position.x = block.x - width;
+            position.x = block.x - hitbox.offsetX - hitbox.width;
             break;
           }
           if (velocity.x < 0) {
             velocity.x = 0;
-            position.x = block.x + block.width + width;
+            position.x = block.x + block.width + hitbox.width + hitbox.offsetX;
             break;
           }
         }
@@ -100,13 +107,14 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.y > 0) {
             velocity.y = 0;
-            position.y = block.y - width;
+            position.y = block.y - hitbox.height - hitbox.offsetY;
             isGrounded = true;
+            hasJumped = false;
             break;
           }
           if (velocity.y < 0) {
             velocity.y = 0;
-            position.y = block.y + block.height;
+            position.y = block.y + block.height + hitbox.offsetY;
             break;
           }
         }
@@ -115,8 +123,9 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.y > 0) {
             velocity.y = 0;
-            position.y = block.y - width;
+            position.y = block.y - hitbox.height - hitbox.offsetY;
             isGrounded = true;
+            hasJumped = false;
             break;
           }
         }
@@ -197,7 +206,6 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     velocity.y = -_jumpForce;
     position.y += velocity.y * dt;
     isGrounded = false;
-    hasJumped = false;
   }
 }
 
@@ -209,5 +217,17 @@ class _PlayerAnimationConfig {
 
   const _PlayerAnimationConfig({
     required this.amount, required this.stepTime, required this.textureSize
+  });
+}
+
+// Private class for player's hitbox
+class _PlayerHitbox {
+  final double offsetX;
+  final double offsetY;
+  final double width;
+  final double height;
+  
+  const _PlayerHitbox({
+    required this.offsetX, required this.offsetY, required this.width, required this.height
   });
 }
