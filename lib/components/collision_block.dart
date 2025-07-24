@@ -11,7 +11,6 @@ class CollisionBlock extends PositionComponent  {
 
   @override
   FutureOr<void> onLoad() {
-    debugMode = true;
     add(RectangleHitbox());
     return super.onLoad();
   }

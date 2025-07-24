@@ -15,6 +15,9 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   bool showJoystick = false;
 
   @override
+  Color backgroundColor() => const Color(0xFF211F30);
+
+  @override
   FutureOr<void> onLoad() async {
 
     // Load all images to cache

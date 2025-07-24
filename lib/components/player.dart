@@ -43,7 +43,6 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimations();
-    debugMode = true;
     add(RectangleHitbox(
       position: Vector2(hitbox.offsetX, hitbox.offsetY),
       size: Vector2(hitbox.width, hitbox.height)
