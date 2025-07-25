@@ -82,10 +82,10 @@
       if (backgroundLayer != null) {
         final backgroundColor = backgroundLayer.properties.getValue('BackgroundColor');
   
-        for (double y = 0; y < numTileSizeY; y++) {
+        for (double y = 0; y < game.size.y / numTileSizeY; y++) {
           for (double x = 0; x < numTileSizeX; x++) {
             final backgroundTile = BackgroundTile(
-                position: Vector2(x * backgroundTileSize, y * backgroundTileSize),
+                position: Vector2(x * backgroundTileSize, y * backgroundTileSize - backgroundTileSize),
                 color: backgroundColor ?? 'Gray'
             );
   
