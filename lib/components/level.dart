@@ -4,6 +4,7 @@
   import 'package:flame_tiled/flame_tiled.dart';
   import 'package:pixel_adventure/components/background_tile.dart';
   import 'package:pixel_adventure/components/collision_block.dart';
+import 'package:pixel_adventure/components/fruit.dart';
   import 'package:pixel_adventure/components/player.dart';
   import 'package:pixel_adventure/pixel_adventure.dart';
   
@@ -67,6 +68,12 @@
             case "Player":
               player.position = Vector2(spawnPoint.x, spawnPoint.y);
               add(player);
+              break;
+            case "Fruit":
+              final Fruit fruit = Fruit(name: spawnPoint.name,
+                  position: spawnPoint.position,
+                  size: spawnPoint.size);
+              add(fruit);
               break;
           }
         }
