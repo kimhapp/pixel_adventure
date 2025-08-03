@@ -6,6 +6,7 @@
   import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/fruit.dart';
   import 'package:pixel_adventure/components/player.dart';
+import 'package:pixel_adventure/components/saw.dart';
   import 'package:pixel_adventure/pixel_adventure.dart';
   
   class Level extends World with HasGameReference<PixelAdventure> {
@@ -74,6 +75,12 @@ import 'package:pixel_adventure/components/fruit.dart';
                   position: spawnPoint.position,
                   size: spawnPoint.size);
               add(fruit);
+              break;
+            case "Saw":
+              final Saw saw = Saw(
+                  position: spawnPoint.position,
+                  size: spawnPoint.size);
+              add(saw);
               break;
           }
         }

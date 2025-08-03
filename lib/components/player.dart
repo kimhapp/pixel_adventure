@@ -4,15 +4,17 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
+import 'package:pixel_adventure/components/custom_hitbox.dart';
+import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/components/utils.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
 enum PlayerState { idle, run, jump, fall }
 
-class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler {
+class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   Player({super.position, required this.character});
   String character;
-  final hitbox = _PlayerHitbox(offsetX: 10, offsetY: 4, width: 14, height: 28);
+  final CustomHitbox hitbox = CustomHitbox(offsetX: 10, offsetY: 4, width: 14, height: 28);
 
   // Animation related fields
   late final SpriteAnimation idleAnimation;
@@ -79,6 +81,14 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     if (isJumpKeyPressed) {hasJumped = true;}
 
     return super.onKeyEvent(event, keysPressed);
+  }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    if (other is Fruit) {
+      other.destroy();
+    }
+    super.onCollision(intersectionPoints, other);
   }
 
   void _checkHorizontalCollisions() {
@@ -216,17 +226,5 @@ class _PlayerAnimationConfig {
 
   const _PlayerAnimationConfig({
     required this.amount, required this.stepTime, required this.textureSize
-  });
-}
-
-// Private class for player's hitbox
-class _PlayerHitbox {
-  final double offsetX;
-  final double offsetY;
-  final double width;
-  final double height;
-  
-  const _PlayerHitbox({
-    required this.offsetX, required this.offsetY, required this.width, required this.height
   });
 }
