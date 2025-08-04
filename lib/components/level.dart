@@ -67,8 +67,8 @@
         for (final spawnPoint in spawnPointsLayer.objects) {
           switch (spawnPoint.class_) {
             case "Player":
-              player.position = Vector2(spawnPoint.x, spawnPoint.y);
               player.startPosition = Vector2(spawnPoint.x, spawnPoint.y);
+              player.position = player.startPosition;
               add(player);
               break;
             case "Fruit":

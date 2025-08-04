@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/fruit.dart';
@@ -253,13 +254,16 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   void gotHit() {
     if ([PlayerState.hit, PlayerState.spawn].contains(current)) return;
     remove(hitbox);
+    velocity = Vector2.zero();
     current = PlayerState.hit;
 
     animationTickers![PlayerState.hit]!.onComplete = () {
-      position = startPosition;
+      scale.x = -1;
+      position = startPosition - Vector2(-32, 32);
       current = PlayerState.spawn;
 
       animationTickers![PlayerState.spawn]!.onComplete = () {
+        position = startPosition;
         add(hitbox);
         current = PlayerState.idle;
       };
