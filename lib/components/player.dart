@@ -4,28 +4,47 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
-import 'package:pixel_adventure/components/custom_hitbox.dart';
 import 'package:pixel_adventure/components/fruit.dart';
+import 'package:pixel_adventure/components/saw.dart';
 import 'package:pixel_adventure/components/utils.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
-enum PlayerState { idle, run, jump, fall }
+enum PlayerState { idle, run, jump, fall, hit, spawn }
 
 class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
   Player({super.position, required this.character});
   String character;
-  final CustomHitbox hitbox = CustomHitbox(offsetX: 10, offsetY: 4, width: 14, height: 28);
+  late final Vector2 startPosition;
+  final RectangleHitbox hitbox = RectangleHitbox(
+      position: Vector2(10, 4),
+      size: Vector2(14, 28)
+  );
 
   // Animation related fields
   late final SpriteAnimation idleAnimation;
   late final SpriteAnimation runAnimation;
   late final SpriteAnimation jumpAnimation;
   late final SpriteAnimation fallAnimation;
+  late final SpriteAnimation hitAnimation;
+  late final SpriteAnimation spawnAnimation;
 
   final idleConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 11, textureSize: 32);
   final runConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 12, textureSize: 32);
   final jumpConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
   final fallConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
+  final hitConfig = _PlayerAnimationConfig(
+      stepTime: 0.05,
+      amount: 7,
+      textureSize: 32,
+      loop: false,
+  );
+  final spawnConfig = _PlayerAnimationConfig(
+      stepTime: 0.05,
+      amount: 7,
+      textureSize: 96,
+      loop: false,
+      isCharacter: false
+  );
 
   // Movement related fields
   double horizontalMovement = 0;
@@ -45,20 +64,19 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   @override
   FutureOr<void> onLoad() {
     _loadAllAnimations();
-    add(RectangleHitbox(
-      position: Vector2(hitbox.offsetX, hitbox.offsetY),
-      size: Vector2(hitbox.width, hitbox.height)
-    ));
+    add(hitbox);
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
-    _updatePlayerSprite();
-    _updatePlayerMovement(dt);
-    _checkHorizontalCollisions();
-    _applyGravity(dt);
-    _checkVerticalCollisions();
+    if (![PlayerState.hit, PlayerState.spawn].contains(current)) {
+      _updatePlayerSprite();
+      _updatePlayerMovement(dt);
+      _checkHorizontalCollisions();
+      _applyGravity(dt);
+      _checkVerticalCollisions();
+    }
     return super.update(dt);
   }
 
@@ -74,7 +92,6 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     } else if (isLeftKeyPressed) {
         horizontalMovement += -1;
     } else {
-      current = PlayerState.idle;
       horizontalMovement = 0;
     }
 
@@ -87,6 +104,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
     if (other is Fruit) {
       other.destroy();
+    } else if (other is Saw) {
+      gotHit();
     }
     super.onCollision(intersectionPoints, other);
   }
@@ -97,12 +116,12 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.x > 0) {
             velocity.x = 0;
-            position.x = block.x - hitbox.offsetX - hitbox.width;
+            position.x = block.x - hitbox.position.x - hitbox.width;
             break;
           }
           if (velocity.x < 0) {
             velocity.x = 0;
-            position.x = block.x + block.width + hitbox.width + hitbox.offsetX;
+            position.x = block.x + block.width + hitbox.width + hitbox.position.x;
             break;
           }
         }
@@ -116,14 +135,14 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.y > 0) {
             velocity.y = 0;
-            position.y = block.y - hitbox.height - hitbox.offsetY;
+            position.y = block.y - hitbox.height - hitbox.position.y;
             isGrounded = true;
             hasJumped = false;
             break;
           }
           if (velocity.y < 0) {
             velocity.y = 0;
-            position.y = block.y + block.height + hitbox.offsetY;
+            position.y = block.y + block.height + hitbox.position.y;
             break;
           }
         }
@@ -132,7 +151,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
         if (checkCollision(this, block)) {
           if (velocity.y > 0) {
             velocity.y = 0;
-            position.y = block.y - hitbox.height - hitbox.offsetY;
+            position.y = block.y - hitbox.height - hitbox.position.y;
             isGrounded = true;
             hasJumped = false;
             break;
@@ -147,22 +166,34 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     runAnimation = _spriteAnimation("Run", runConfig);
     jumpAnimation = _spriteAnimation("Jump", jumpConfig);
     fallAnimation = _spriteAnimation("Fall", fallConfig);
+    hitAnimation = _spriteAnimation("Hit", hitConfig);
+    spawnAnimation = _spriteAnimation("Appearing", spawnConfig);
 
     // List of all animations
     animations = {
       PlayerState.idle: idleAnimation,
       PlayerState.run: runAnimation,
       PlayerState.jump: jumpAnimation,
-      PlayerState.fall: fallAnimation
+      PlayerState.fall: fallAnimation,
+      PlayerState.hit: hitAnimation,
+      PlayerState.spawn: spawnAnimation
     };
 
     current = PlayerState.idle;
   }
 
   SpriteAnimation _spriteAnimation(String state, _PlayerAnimationConfig config) {
+    // Use for filename only
+    final int textureSize = config.textureSize.toInt();
+    final String name = config.isCharacter ? "/$character" : "";
     return SpriteAnimation.fromFrameData(
-        game.images.fromCache('Main Characters/$character/$state (32x32).png'),
-        SpriteAnimationData.sequenced(amount: config.amount, stepTime: config.stepTime, textureSize: Vector2.all(config.textureSize))
+        game.images.fromCache('Main Characters$name/$state (${textureSize}x$textureSize).png'),
+        SpriteAnimationData.sequenced(
+            amount: config.amount,
+            stepTime: config.stepTime,
+            textureSize: Vector2.all(config.textureSize),
+            loop: config.loop
+        )
     );
   }
 
@@ -177,6 +208,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
       }
     } else if (horizontalMovement != 0) {
       playerState = PlayerState.run;
+    } else {
+      playerState = PlayerState.idle;
     }
 
     if (horizontalMovement < 0 && !isFlippedHorizontally) {
@@ -216,6 +249,22 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     position.y += velocity.y * dt;
     isGrounded = false;
   }
+
+  void gotHit() {
+    if ([PlayerState.hit, PlayerState.spawn].contains(current)) return;
+    remove(hitbox);
+    current = PlayerState.hit;
+
+    animationTickers![PlayerState.hit]!.onComplete = () {
+      position = startPosition;
+      current = PlayerState.spawn;
+
+      animationTickers![PlayerState.spawn]!.onComplete = () {
+        add(hitbox);
+        current = PlayerState.idle;
+      };
+    };
+  }
 }
 
 // Private class for player's animation config
@@ -223,8 +272,14 @@ class _PlayerAnimationConfig {
   final int amount;
   final double stepTime;
   final double textureSize;
+  final bool loop;
+  final bool isCharacter;
 
   const _PlayerAnimationConfig({
-    required this.amount, required this.stepTime, required this.textureSize
+    required this.amount,
+    required this.stepTime,
+    required this.textureSize,
+    this.loop = true,
+    this.isCharacter = true
   });
 }
