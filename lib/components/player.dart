@@ -8,16 +8,17 @@ import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/components/saw.dart';
 import 'package:pixel_adventure/components/utils.dart';
+import 'package:pixel_adventure/pixel_adventure.dart';
 
 import 'animation_config.dart';
 
 enum PlayerState { idle, run, jump, fall, hit, spawn, disappear }
 
-class Player extends SpriteAnimationGroupComponent with HasGameReference, KeyboardHandler, CollisionCallbacks {
+class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks, HasVisibility {
   Player({super.position, required this.character});
   String character;
-  late final Vector2 startPosition;
-  late final int startDir;
+  late Vector2 startPosition;
+  late int startDir;
   final RectangleHitbox hitbox = RectangleHitbox(
       position: Vector2(10, 4),
       size: Vector2(14, 28)
@@ -284,7 +285,13 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference, Keyboa
     current = PlayerState.disappear;
 
     animationTickers![PlayerState.disappear]!.onComplete = () {
-      removeFromParent();
+      isVisible = false;
+      current = PlayerState.idle;
+
+      const delayBeforeNextLevel = Duration(seconds: 3);
+      Future.delayed(delayBeforeNextLevel, () {
+        game.loadNextLevel();
+      });
     };
   }
 }

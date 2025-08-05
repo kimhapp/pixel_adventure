@@ -13,6 +13,8 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   final Player player = Player(character: "Pink Man");
   late JoystickComponent joystickComponent;
   bool showJoystick = false;
+  static const List<String> levelNames = ['Level-01', 'Level-01'];
+  int currentLevelIndex = 0;
 
   @override
   Color backgroundColor() => const Color(0xFF211F30);
@@ -23,12 +25,7 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
     // Load all images to cache
     await images.loadAllImages();
 
-    final world = Level(levelName: "Level-01", player: player);
-
-    camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
-    camera.viewfinder.anchor = Anchor.topLeft;
-
-    addAll([camera, world]);
+    _loadLevel();
 
     if (showJoystick) {
       addJoystick();
@@ -70,5 +67,26 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
         player.direction = 0;
         break;
     }
+  }
+
+  void loadNextLevel() {
+    removeWhere((component) => component is Level);
+
+    if (currentLevelIndex < levelNames.length - 1) {
+      currentLevelIndex++;
+      player.isVisible = true;
+      _loadLevel();
+    }
+  }
+
+  void _loadLevel() {
+    Future.delayed(const Duration(seconds: 1), () {
+      Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
+
+      camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
+      camera.viewfinder.anchor = Anchor.topLeft;
+
+      addAll([camera, world]);
+    });
   }
 }
