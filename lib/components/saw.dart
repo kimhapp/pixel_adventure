@@ -25,7 +25,6 @@ class Saw extends SpriteAnimationComponent with HasGameReference, CollisionCallb
   @override
   FutureOr<void> onLoad() {
     priority = -1;
-    debugMode = true;
     add(CircleHitbox());
 
     if (isVertical) {

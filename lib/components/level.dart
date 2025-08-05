@@ -3,13 +3,13 @@
   import 'package:flame/components.dart';
   import 'package:flame_tiled/flame_tiled.dart';
   import 'package:pixel_adventure/components/background_tile.dart';
+import 'package:pixel_adventure/components/checkpoint.dart';
   import 'package:pixel_adventure/components/collision_block.dart';
   import 'package:pixel_adventure/components/fruit.dart';
   import 'package:pixel_adventure/components/player.dart';
   import 'package:pixel_adventure/components/saw.dart';
-  import 'package:pixel_adventure/pixel_adventure.dart';
 
-  class Level extends World with HasGameReference<PixelAdventure> {
+  class Level extends World with HasGameReference {
     Level({required this.levelName, required this.player});
     String levelName;
     Player player;
@@ -67,7 +67,9 @@
         for (final spawnPoint in spawnPointsLayer.objects) {
           switch (spawnPoint.class_) {
             case "Player":
-              player.startPosition = Vector2(spawnPoint.x, spawnPoint.y);
+              player.startDir = spawnPoint.properties.getValue("startDir");
+              player.startPosition = spawnPoint.position;
+              player.scale.x = player.startDir.toDouble();
               player.position = player.startPosition;
               add(player);
               break;
@@ -88,6 +90,13 @@
                   position: spawnPoint.position,
                   size: spawnPoint.size);
               add(saw);
+              break;
+            case "Checkpoint":
+              final Checkpoint checkpoint = Checkpoint(
+                position: spawnPoint.position,
+                size: spawnPoint.size,
+              );
+              add(checkpoint);
               break;
           }
         }

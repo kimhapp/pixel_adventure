@@ -2,20 +2,22 @@ import 'dart:async';
 
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:pixel_adventure/components/checkpoint.dart';
 import 'package:pixel_adventure/components/collision_block.dart';
 import 'package:pixel_adventure/components/fruit.dart';
 import 'package:pixel_adventure/components/saw.dart';
 import 'package:pixel_adventure/components/utils.dart';
-import 'package:pixel_adventure/pixel_adventure.dart';
 
-enum PlayerState { idle, run, jump, fall, hit, spawn }
+import 'animation_config.dart';
 
-class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAdventure>, KeyboardHandler, CollisionCallbacks {
+enum PlayerState { idle, run, jump, fall, hit, spawn, disappear }
+
+class Player extends SpriteAnimationGroupComponent with HasGameReference, KeyboardHandler, CollisionCallbacks {
   Player({super.position, required this.character});
   String character;
   late final Vector2 startPosition;
+  late final int startDir;
   final RectangleHitbox hitbox = RectangleHitbox(
       position: Vector2(10, 4),
       size: Vector2(14, 28)
@@ -28,27 +30,30 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   late final SpriteAnimation fallAnimation;
   late final SpriteAnimation hitAnimation;
   late final SpriteAnimation spawnAnimation;
+  late final SpriteAnimation disappearAnimation;
 
-  final idleConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 11, textureSize: 32);
-  final runConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 12, textureSize: 32);
-  final jumpConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
-  final fallConfig = _PlayerAnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
-  final hitConfig = _PlayerAnimationConfig(
-      stepTime: 0.05,
-      amount: 7,
-      textureSize: 32,
-      loop: false,
-  );
-  final spawnConfig = _PlayerAnimationConfig(
+  final idleConfig = AnimationConfig(stepTime: 0.05, amount: 11, textureSize: 32);
+  final runConfig = AnimationConfig(stepTime: 0.05, amount: 12, textureSize: 32);
+  final jumpConfig = AnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
+  final fallConfig = AnimationConfig(stepTime: 0.05, amount: 1, textureSize: 32);
+  final hitConfig = AnimationConfig(stepTime: 0.05, amount: 7, textureSize: 32, loop: false,);
+  final spawnConfig = AnimationConfig(
       stepTime: 0.05,
       amount: 7,
       textureSize: 96,
       loop: false,
-      isCharacter: false
+      hasCharacterName: false
+  );
+  final disappearConfig = AnimationConfig(
+      stepTime: 0.05,
+      amount: 7,
+      textureSize: 96,
+      loop: false,
+      hasCharacterName: false
   );
 
   // Movement related fields
-  double horizontalMovement = 0;
+  double direction = 0;
   double moveSpeed = 100;
   Vector2 velocity = Vector2.zero();
   double friction = 0.85;
@@ -71,7 +76,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   void update(double dt) {
-    if (![PlayerState.hit, PlayerState.spawn].contains(current)) {
+    if (![PlayerState.hit, PlayerState.spawn, PlayerState.disappear].contains(current)) {
       _updatePlayerSprite();
       _updatePlayerMovement(dt);
       _checkHorizontalCollisions();
@@ -83,17 +88,17 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    horizontalMovement = 0;
+    direction = 0;
     bool isLeftKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyA);
     bool isRightKeyPressed = keysPressed.contains(LogicalKeyboardKey.keyD);
     bool isJumpKeyPressed = keysPressed.contains(LogicalKeyboardKey.space) && !hasJumped; // Prevent another jump if space is pressed during in air
 
     if (isRightKeyPressed) {
-        horizontalMovement += 1;
+        direction += 1;
     } else if (isLeftKeyPressed) {
-        horizontalMovement += -1;
+        direction += -1;
     } else {
-      horizontalMovement = 0;
+      direction = 0;
     }
 
     if (isJumpKeyPressed) {hasJumped = true;}
@@ -102,13 +107,15 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   }
 
   @override
-  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
     if (other is Fruit) {
       other.destroy();
     } else if (other is Saw) {
-      gotHit();
+      _gotHit();
+    } else if (other is Checkpoint) {
+      _reachCheckpoint();
     }
-    super.onCollision(intersectionPoints, other);
+    super.onCollisionStart(intersectionPoints, other);
   }
 
   void _checkHorizontalCollisions() {
@@ -169,6 +176,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     fallAnimation = _spriteAnimation("Fall", fallConfig);
     hitAnimation = _spriteAnimation("Hit", hitConfig);
     spawnAnimation = _spriteAnimation("Appearing", spawnConfig);
+    disappearAnimation = _spriteAnimation("Disappearing", disappearConfig);
 
     // List of all animations
     animations = {
@@ -177,16 +185,17 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
       PlayerState.jump: jumpAnimation,
       PlayerState.fall: fallAnimation,
       PlayerState.hit: hitAnimation,
-      PlayerState.spawn: spawnAnimation
+      PlayerState.spawn: spawnAnimation,
+      PlayerState.disappear: disappearAnimation
     };
 
     current = PlayerState.idle;
   }
 
-  SpriteAnimation _spriteAnimation(String state, _PlayerAnimationConfig config) {
+  SpriteAnimation _spriteAnimation(String state, AnimationConfig config) {
     // Use for filename only
     final int textureSize = config.textureSize.toInt();
-    final String name = config.isCharacter ? "/$character" : "";
+    final String name = config.hasCharacterName ? "/$character" : "";
     return SpriteAnimation.fromFrameData(
         game.images.fromCache('Main Characters$name/$state (${textureSize}x$textureSize).png'),
         SpriteAnimationData.sequenced(
@@ -207,15 +216,15 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
       } else {
         playerState = PlayerState.fall;
       }
-    } else if (horizontalMovement != 0) {
+    } else if (direction != 0) {
       playerState = PlayerState.run;
     } else {
       playerState = PlayerState.idle;
     }
 
-    if (horizontalMovement < 0 && !isFlippedHorizontally) {
+    if (direction < 0 && !isFlippedHorizontally) {
       flipHorizontallyAroundCenter();
-    } else if (horizontalMovement > 0 && isFlippedHorizontally) {
+    } else if (direction > 0 && isFlippedHorizontally) {
       flipHorizontallyAroundCenter();
     }
 
@@ -225,8 +234,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   void _updatePlayerMovement(double dt) {
     if (hasJumped && isGrounded) _playerJump(dt);
 
-    if (horizontalMovement != 0) {
-      velocity.x = horizontalMovement * moveSpeed;
+    if (direction != 0) {
+      velocity.x = direction * moveSpeed;
     } else {
       velocity.x *= friction; // Friction movement when stopped
     }
@@ -251,15 +260,14 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     isGrounded = false;
   }
 
-  void gotHit() {
-    if ([PlayerState.hit, PlayerState.spawn].contains(current)) return;
+  void _gotHit() {
     remove(hitbox);
     velocity = Vector2.zero();
     current = PlayerState.hit;
 
     animationTickers![PlayerState.hit]!.onComplete = () {
-      scale.x = -1;
-      position = startPosition - Vector2(-32, 32);
+      scale.x = startDir.toDouble();
+      position = startPosition - Vector2(32 * scale.x, 32);
       current = PlayerState.spawn;
 
       animationTickers![PlayerState.spawn]!.onComplete = () {
@@ -269,21 +277,14 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
       };
     };
   }
-}
 
-// Private class for player's animation config
-class _PlayerAnimationConfig {
-  final int amount;
-  final double stepTime;
-  final double textureSize;
-  final bool loop;
-  final bool isCharacter;
+  void _reachCheckpoint() {
+    remove(hitbox);
+    position = position - Vector2(32 * scale.x, 32);
+    current = PlayerState.disappear;
 
-  const _PlayerAnimationConfig({
-    required this.amount,
-    required this.stepTime,
-    required this.textureSize,
-    this.loop = true,
-    this.isCharacter = true
-  });
+    animationTickers![PlayerState.disappear]!.onComplete = () {
+      removeFromParent();
+    };
+  }
 }
