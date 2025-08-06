@@ -10,8 +10,8 @@ import 'package:pixel_adventure/components/level.dart';
 class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
   final double width = 640;
   final double height = 360;
-  final Player player = Player(character: "Pink Man");
   late JoystickComponent joystickComponent;
+  late Player player;
   bool showJoystick = false;
   static const List<String> levelNames = ['Level-01', 'Level-01'];
   int currentLevelIndex = 0;
@@ -74,13 +74,13 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
 
     if (currentLevelIndex < levelNames.length - 1) {
       currentLevelIndex++;
-      player.isVisible = true;
       _loadLevel();
     }
   }
 
   void _loadLevel() {
     Future.delayed(const Duration(seconds: 1), () {
+      player = Player(character: "Pink Man");
       Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
 
       camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);

@@ -70,8 +70,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   FutureOr<void> onLoad() {
-    _loadAllAnimations();
     add(hitbox);
+    _loadAllAnimations();
     return super.onLoad();
   }
 
@@ -285,8 +285,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
     current = PlayerState.disappear;
 
     animationTickers![PlayerState.disappear]!.onComplete = () {
-      isVisible = false;
-      current = PlayerState.idle;
+      removeFromParent();
 
       const delayBeforeNextLevel = Duration(seconds: 3);
       Future.delayed(delayBeforeNextLevel, () {
