@@ -12,8 +12,10 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   final double width = 640;
   final double height = 360;
   late JoystickComponent joystickComponent;
-  Player player = Player(character: 'Mask Dude');
+  final JumpButton jumpButton = JumpButton();
+  late Player player;
   bool showJoystick = true;
+  bool _isLoading = true;
   static const List<String> levelNames = ['Level-01', 'Level-01'];
   int currentLevelIndex = 0;
 
@@ -27,17 +29,12 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
     await images.loadAllImages();
 
     _loadLevel();
-
-    if (showJoystick) {
-      addJoystick();
-      camera.viewport.add(JumpButton());
-    }
     return super.onLoad();
   }
 
   @override
   void update(double dt) {
-    if (showJoystick) {
+    if (showJoystick && (!_isLoading)) {
       updateJoystick();
     }
     return super.update(dt);
@@ -72,7 +69,13 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   }
 
   void loadNextLevel() {
+    _isLoading = true;
     removeWhere((component) => component is Level);
+
+    if (showJoystick) {
+      camera.viewport.remove(joystickComponent);
+      camera.viewport.remove(jumpButton);
+    }
 
     if (currentLevelIndex < levelNames.length - 1) {
       currentLevelIndex++;
@@ -81,11 +84,21 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   }
 
   void _loadLevel() {
-    Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
+    Future.delayed(const Duration(seconds: 1), () {
+      player = Player(character: 'Mask Dude');
+      Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
 
-    camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
-    camera.viewfinder.anchor = Anchor.topLeft;
+      camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
+      camera.viewfinder.anchor = Anchor.topLeft;
 
-    addAll([world, camera]);
+      addAll([world, camera]);
+
+      if (showJoystick) {
+        addJoystick();
+        camera.viewport.add(jumpButton);
+      }
+
+      _isLoading = false;
+    });
   }
 }
