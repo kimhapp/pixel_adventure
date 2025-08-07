@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:pixel_adventure/components/jump_button.dart';
 import 'package:pixel_adventure/components/player.dart';
 import 'package:pixel_adventure/components/level.dart';
 
@@ -11,8 +12,8 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   final double width = 640;
   final double height = 360;
   late JoystickComponent joystickComponent;
-  late Player player;
-  bool showJoystick = false;
+  Player player = Player(character: 'Mask Dude');
+  bool showJoystick = true;
   static const List<String> levelNames = ['Level-01', 'Level-01'];
   int currentLevelIndex = 0;
 
@@ -29,6 +30,7 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
 
     if (showJoystick) {
       addJoystick();
+      camera.viewport.add(JumpButton());
     }
     return super.onLoad();
   }
@@ -45,7 +47,7 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
     joystickComponent = JoystickComponent(
       knob: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Knob.png"))),
       background: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Joystick.png"))),
-      margin: const EdgeInsets.only(left: 32, bottom: 32),
+      margin: const EdgeInsets.only(left: 16, bottom: 16),
     );
 
     camera.viewport.add(joystickComponent); // Add joystick to viewport so it is always visible
@@ -79,14 +81,11 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   }
 
   void _loadLevel() {
-    Future.delayed(const Duration(seconds: 1), () {
-      player = Player(character: "Pink Man");
-      Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
+    Level world = Level(levelName: levelNames[currentLevelIndex], player: player);
 
-      camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
-      camera.viewfinder.anchor = Anchor.topLeft;
+    camera = CameraComponent.withFixedResolution(width: width, height: height, world: world);
+    camera.viewfinder.anchor = Anchor.topLeft;
 
-      addAll([camera, world]);
-    });
+    addAll([world, camera]);
   }
 }
