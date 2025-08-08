@@ -4,14 +4,18 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:pixel_adventure/components/jump_button.dart';
+import 'package:pixel_adventure/components/UI/jump_button.dart';
 import 'package:pixel_adventure/components/player.dart';
 import 'package:pixel_adventure/components/level.dart';
 
 class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
   final double width = 640;
   final double height = 360;
-  late JoystickComponent joystickComponent;
+  late final JoystickComponent joystickComponent = JoystickComponent(
+      knob: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Knob.png"))),
+      background: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Joystick.png"))),
+      margin: const EdgeInsets.only(left: 16, bottom: 16)
+  );
   final JumpButton jumpButton = JumpButton();
   late Player player;
   bool showJoystick = true;
@@ -40,14 +44,14 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
     return super.update(dt);
   }
 
-  void addJoystick() {
-    joystickComponent = JoystickComponent(
-      knob: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Knob.png"))),
-      background: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Joystick.png"))),
-      margin: const EdgeInsets.only(left: 16, bottom: 16),
-    );
-
+  void addJoystickUI() {
     camera.viewport.add(joystickComponent); // Add joystick to viewport so it is always visible
+    camera.viewport.add(jumpButton);
+  }
+
+  void removeJoystickUI() {
+    camera.viewport.remove(joystickComponent);
+    camera.viewport.remove(jumpButton);
   }
 
   void updateJoystick() {
@@ -72,10 +76,7 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
     _isLoading = true;
     removeWhere((component) => component is Level);
 
-    if (showJoystick) {
-      camera.viewport.remove(joystickComponent);
-      camera.viewport.remove(jumpButton);
-    }
+    if (showJoystick) removeJoystickUI();
 
     if (currentLevelIndex < levelNames.length - 1) {
       currentLevelIndex++;
@@ -93,10 +94,7 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
 
       addAll([world, camera]);
 
-      if (showJoystick) {
-        addJoystick();
-        camera.viewport.add(jumpButton);
-      }
+      if (showJoystick) addJoystickUI();
 
       _isLoading = false;
     });

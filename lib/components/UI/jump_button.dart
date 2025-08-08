@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flame/components.dart';
+import 'package:flame/input.dart';
 import 'package:pixel_adventure/pixel_adventure.dart';
 
-class JumpButton extends SpriteComponent with HasGameReference<PixelAdventure> {
+class JumpButton extends SpriteButtonComponent with HasGameReference<PixelAdventure> {
   JumpButton();
 
   static const margin = 16;
@@ -11,8 +12,15 @@ class JumpButton extends SpriteComponent with HasGameReference<PixelAdventure> {
 
   @override
   FutureOr<void> onLoad() {
-    sprite = Sprite(game.images.fromCache('HUD/JumpButton.png'));
+    button = Sprite(game.images.fromCache('HUD/JumpButton.png'));
     position = Vector2(game.size.x - margin - buttonSize, game.size.y - margin - buttonSize);
+
+    onPressed = () {
+      if (game.player.isGrounded) {
+        game.player.hasJumped = true;
+      }
+    };
     return super.onLoad();
   }
+
 }
