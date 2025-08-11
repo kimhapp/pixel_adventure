@@ -64,6 +64,8 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
   bool isGrounded = true;
   bool hitHead = false;
   bool hasJumped = false;
+  double fixedDeltaTime = 1 / 60;
+  double acceleratedTime = 0;
 
   // List of collision from levels
   List<CollisionBlock> collisionBlocks = [];
@@ -77,13 +79,20 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
   @override
   void update(double dt) {
-    if (![PlayerState.hit, PlayerState.spawn, PlayerState.disappear].contains(current)) {
-      _updatePlayerSprite();
-      _updatePlayerMovement(dt);
-      _checkHorizontalCollisions();
-      _applyGravity(dt);
-      _checkVerticalCollisions();
+    acceleratedTime += dt;
+
+    while (acceleratedTime >= fixedDeltaTime) {
+      if (![PlayerState.hit, PlayerState.spawn, PlayerState.disappear].contains(current)) {
+        _updatePlayerSprite();
+        _updatePlayerMovement(fixedDeltaTime);
+        _checkHorizontalCollisions();
+        _applyGravity(fixedDeltaTime);
+        _checkVerticalCollisions();
+      }
+
+      acceleratedTime -= fixedDeltaTime;
     }
+
     return super.update(dt);
   }
 
@@ -192,7 +201,7 @@ class Player extends SpriteAnimationGroupComponent with HasGameReference<PixelAd
 
     current = PlayerState.idle;
   }
-
+  
   SpriteAnimation _spriteAnimation(String state, AnimationConfig config) {
     // Use for filename only
     final int textureSize = config.textureSize.toInt();

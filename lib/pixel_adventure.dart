@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
@@ -11,14 +12,14 @@ import 'package:pixel_adventure/components/level.dart';
 class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCallbacks, HasCollisionDetection {
   final double width = 640;
   final double height = 360;
-  late final JoystickComponent joystickComponent = JoystickComponent(
+  late final JoystickComponent joystick = JoystickComponent(
       knob: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Knob.png"))),
       background: SpriteComponent(sprite: Sprite(images.fromCache("HUD/Joystick.png"))),
       margin: const EdgeInsets.only(left: 16, bottom: 16)
   );
   final JumpButton jumpButton = JumpButton();
   late Player player;
-  bool showJoystick = true;
+  final bool showJoystick = Platform.isAndroid || Platform.isIOS;
   bool _isLoading = true;
   static const List<String> levelNames = ['Level-01', 'Level-01'];
   int currentLevelIndex = 0;
@@ -45,17 +46,17 @@ class PixelAdventure extends FlameGame with HasKeyboardHandlerComponents, DragCa
   }
 
   void addJoystickUI() {
-    camera.viewport.add(joystickComponent); // Add joystick to viewport so it is always visible
+    camera.viewport.add(joystick); // Add joystick to viewport so it is always visible
     camera.viewport.add(jumpButton);
   }
 
   void removeJoystickUI() {
-    camera.viewport.remove(joystickComponent);
+    camera.viewport.remove(joystick);
     camera.viewport.remove(jumpButton);
   }
 
   void updateJoystick() {
-    switch (joystickComponent.direction) {
+    switch (joystick.direction) {
       case JoystickDirection.left:
       case JoystickDirection.upLeft:
       case JoystickDirection.downLeft:

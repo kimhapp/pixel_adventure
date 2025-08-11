@@ -106,22 +106,14 @@ import 'package:pixel_adventure/components/checkpoint.dart';
     void _scrollingBackground() {
       final backgroundLayer = level.tileMap.getLayer('Background');
 
-      final numTileSizeY = (game.size.y / backgroundTileSize).round();
-      final numTileSizeX = (game.size.x / backgroundTileSize).round();
-
       if (backgroundLayer != null) {
         final backgroundColor = backgroundLayer.properties.getValue('BackgroundColor');
+        final backgroundTile = BackgroundTile(
+            position: Vector2(0, 0),
+            color: backgroundColor ?? 'Gray'
+        );
 
-        for (double y = 0; y < game.size.y / numTileSizeY; y++) {
-          for (double x = 0; x < numTileSizeX; x++) {
-            final backgroundTile = BackgroundTile(
-                position: Vector2(x * backgroundTileSize, y * backgroundTileSize - backgroundTileSize),
-                color: backgroundColor ?? 'Gray'
-            );
-
-            add(backgroundTile);
-          }
-        }
+        add(backgroundTile);
       }
     }
   }
